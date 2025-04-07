@@ -1,6 +1,15 @@
-import { Body, Controller, Delete, Get, Post, Req } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Post,
+  Req,
+} from '@nestjs/common';
 import { Request } from 'express';
 import { LoginService } from './login.service';
+import { LoginPipe } from './login.pipe';
 @Controller('login')
 export class LoginController {
   constructor(private readonly loginService: LoginService) {}
@@ -12,7 +21,7 @@ export class LoginController {
   }
 
   @Post('creactUser')
-  async creactUser(@Body() body, @Req() req: Request) {
+  async creactUser(@Body(LoginPipe) body, @Req() req: Request) {
     return this.loginService.creactUser(body, req);
   }
 

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Param, ParseIntPipe } from '@nestjs/common';
 import * as svgCaptcha from 'svg-captcha';
 import { Request } from 'express';
 import { PrismaService } from 'src/db';
@@ -71,15 +71,4 @@ export class LoginService {
     });
     return { success: true, message: '删除成功', data: user };
   }
-  // async loginUser(body: User) {
-  //   const user = await this.prisma.user.findUnique({
-  //     where: { name: body.username, password: body.password },
-  //   });
-  //   if (user.password === body.password) {
-  //     return { success: true, message: '登录成功', data: user };
-  //   } else {
-  //     return { success: false, message: '密码错误' };
-  //   }
-  // }
 }
-

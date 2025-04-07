@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import * as session from 'express-session';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as cookieParser from 'cookie-parser';
+import { LoginPipe } from './login/login.pipe';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -19,7 +20,7 @@ async function bootstrap() {
     exposedHeaders: ['Set-Cookie'], // 允许前端访问的响应头
   });
   // Session配置
-
+  app.useGlobalPipes(new LoginPipe()); //注册方式
   app.use(
     session({
       secret: 'panda-session',
