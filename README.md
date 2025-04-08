@@ -43,3 +43,51 @@ getTest(@Param('id', ParseIntPipe) id: number) {
 2. 代码简洁：避免在业务逻辑中编写重复的数据验证代码
 3. 可复用性：自定义管道可以在整个应用程序中重复使用
 4. 职责分离：将数据转换和验证逻辑与业务逻辑分离
+
+### my diy Pipe
+
+-------use method! 先定义管道，在控制器中使用，然后在 pipe配置，我们可以用到 class-transformer 和 class-validator 来进行数据转换和验证。
+
+```typescript
+// login.pipe.ts
+import { IsNotEmpty, Length } from 'class-validator';
+export class LoginDto {
+  @IsNotEmpty({ message: '用户名不能为空' })
+  username: string;
+  @Length(8, 16, { message: '密码长度必须在8到16之间!!!' })
+  @IsNotEmpty({ message: '密码不能为空' })
+  password: string;
+}
+
+//
+import {
+  PipeTransform,
+  Injectable,
+  ArgumentMetadata,
+  BadRequestException,
+} from '@nestjs/common';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+
+// LoginPipe用于处理登录请求的数据转换和验证
+@Injectable()
+export class LoginPipe implements PipeTransform {// transform方法用于将输入值转换为指定类型并进行验证
+  async transform(value: any, metadata: ArgumentMetadata) { // 将输入值转换为指定的类实例
+    const object = plainToInstance(metadata.metatype, value);
+    console.log('object 管道', object);// 验证转换后的对象
+    const errors = await validate(object);
+    console.log('errors', errors);// 如果存在验证错误，抛出BadRequestException
+    if (errors.length > 0) {
+      throw new BadRequestException(errors);
+    }// 返回验证通过的对象
+    return object;
+  }}
+// login.controller.ts
+@Post('creactUser')
+  async creactUser(@Body(new LoginPipe()) body: LoginDto, @Req() req: Request) {
+    return this.loginService.creactUser(body, req);
+  }
+```
+### nestjs 自带的全局管道方法
+
+前端提交请求数据 ➡️ Pipe 拦截并转 DTO 校验 ➡️ 校验失败 ➡️ 抛出 BadRequestException ➡️ Filter 捕获并返回统一格式的错误信息

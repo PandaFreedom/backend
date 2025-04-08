@@ -4,13 +4,15 @@ import * as session from 'express-session';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as cookieParser from 'cookie-parser';
 import { LoginPipe } from './login/login.pipe';
-
+import { ValidationPipe } from '@nestjs/common';
+import { FilterTestFilter } from './filter-test/filter-test.filter';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
   // 添加cookie解析中间件
   app.use(cookieParser());
-
+  app.useGlobalPipes(new ValidationPipe());
+  app.useGlobalFilters(new FilterTestFilter());
   // CORS配置要在session中间件之前
   app.enableCors({
     origin: ['http://localhost:3000', 'http://localhost:3002'], // 允许的前端地址
