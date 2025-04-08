@@ -43,25 +43,25 @@ export class LoginService {
   }
 
   async creactUser(body: User, req: Request) {
-    // console.log('服务层接收到的session对象:', req.session);
-    // console.log('服务层接收到的验证码:', req.session['svg']);
-    // console.log('用户提交的验证码:', body.svgText);
+    console.log('服务层接收到的session对象:', req.session);
+    console.log('服务层接收到的验证码:', req.session['svg']);
+    console.log('用户提交的验证码:', body.svgText);
     if (!req.session['svg']) {
       console.log('session中没有验证码');
       return { success: false, message: '验证码已过期，请重新获取' };
     }
 
     if (body.svgText.toLowerCase() === req.session['svg'].toLowerCase()) {
+      console.log('验证码正确', body);
       const user = await this.prisma.user.create({
         data: {
           name: body.username,
           password: body.password,
         },
       });
-      console.log('注册成功', user);
       return { success: true, message: '注册成功', data: user };
     } else {
-      console.log('error !===svg验证码错误');
+      console.log('验证码错误');
       return { success: false, message: '验证码错误' };
     }
   }

@@ -10,8 +10,6 @@ import {
 import { Request } from 'express';
 import { LoginService } from './login.service';
 import { LoginPipe } from './login.pipe';
-import { LoginDto } from './login.dto';
-
 @Controller('login')
 export class LoginController {
   constructor(private readonly loginService: LoginService) {}
@@ -23,13 +21,14 @@ export class LoginController {
   }
 
   @Post('creactUser')
-  async creactUser(@Body() body: LoginDto, @Req() req: Request) {
+  async creactUser(@Body(LoginPipe) body, @Req() req: Request) {
     return this.loginService.creactUser(body, req);
   }
 
   @Post('userLogin')
-  async userLogin(@Body(new LoginPipe()) body: LoginDto, @Req() req: Request) {
+  async userLogin(@Body() body, @Req() req: Request) {
     console.log('接收到的登录请求体:', body);
+    // 这里可以实现登录逻辑
   }
 
   @Delete('deleteUser')
