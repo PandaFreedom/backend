@@ -16,14 +16,18 @@ export class LoginPipe implements PipeTransform {
     const object = plainToInstance(metadata.metatype, value);
     // 验证转换后的对象
     const errors = await validate(object);
-    console.log('errors::: ', errors);
-    const errorMessage = errors.map((error) => {
-      return Object.values(error.constraints).join(',');
-    });
-    console.log('errorMessage', errorMessage);
-    // 如果存在验证错误，抛出BadRequestException
+
     if (errors.length > 0) {
-      throw new BadRequestException(errorMessage);
+      const errorMessages = errors.map((error) => {
+        const constraints = error.constraints
+          ? Object.values(error.constraints)
+          : [];
+        return {
+          property: error.property,
+          messages: constraints,
+        };
+      });
+      throw new BadRequestException(errorMessages);
     }
     // 返回验证通过的对象
     return object;

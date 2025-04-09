@@ -3,13 +3,16 @@ import {
   Controller,
   Delete,
   Get,
-  Param,
   Post,
   Req,
+  UsePipes,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { LoginService } from './login.service';
+import { LoginDto } from './login.dto';
 import { LoginPipe } from './login.pipe';
+import type { User } from '@prisma/client';
+
 @Controller('login')
 export class LoginController {
   constructor(private readonly loginService: LoginService) {}
@@ -21,7 +24,8 @@ export class LoginController {
   }
 
   @Post('creactUser')
-  async creactUser(@Body(LoginPipe) body, @Req() req: Request) {
+  @UsePipes(LoginPipe)
+  async creactUser(@Body() body: LoginDto, @Req() req: Request) {
     return this.loginService.creactUser(body, req);
   }
 
