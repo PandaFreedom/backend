@@ -3,7 +3,7 @@ import { IsConfirmedPassword } from './rules/is-confirmed_password.rule';
 import { IsLongerThan } from './rules/is-not-exists.rule';
 export class LoginDto {
   @IsNotEmpty()
-  @IsLongerThan('username', { message: 'your name is of repeat' }) // 自定义验证器
+  @IsLongerThan('user', { message: 'your name is of repeat' }) // 自定义验证器
   username: string;
   @IsEmail()
   email: string;

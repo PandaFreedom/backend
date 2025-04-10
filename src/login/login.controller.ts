@@ -11,7 +11,6 @@ import { Request } from 'express';
 import { LoginService } from './login.service';
 import { LoginDto } from './login.dto';
 import { LoginPipe } from './login.pipe';
-import type { User } from '@prisma/client';
 
 @Controller('login')
 export class LoginController {
@@ -24,7 +23,7 @@ export class LoginController {
   }
 
   @Post('creactUser')
-  @UsePipes(LoginPipe)
+  // @UsePipes(LoginPipe) 可注释因为管道已经注册到main.ts中
   async creactUser(@Body() body: LoginDto, @Req() req: Request) {
     return this.loginService.creactUser(body, req);
   }
