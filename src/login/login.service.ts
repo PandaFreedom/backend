@@ -27,14 +27,14 @@ export class LoginService {
     // 直接修改 req.session
     req.session['svg'] = svg.text;
 
-    // console.log('服务层生成的验证码:', svg.text);
-    // console.log('session对象:', req.session);
-    // console.log('session["svg"]:', req.session['svg']);
+    console.log('服务层生成的验证码:', svg.text);
+    console.log('session对象:', req.session);
+    console.log('session["svg"]:', req.session['svg']);
 
     // 显式保存session
     await new Promise<void>((resolve) => {
       req.session.save(() => {
-        // console.log('Session 已保存');
+        console.log('Session 已保存');
         resolve();
       });
     });
