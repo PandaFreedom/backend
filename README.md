@@ -1,8 +1,7 @@
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
-sudo pnpm add -D prisma typescript @types/node @types/mockjs @nestjs/mapped-types @types/passport-local @types/passport-jwt @types/express @types/lodash @types/multer
-sudo pnpm add -D prisma-binding @prisma/client mockjs @nestjs/config class-validator class-transformer argon2 @nestjs/passport passport passport-local @nestjs/jwt passport-jwt lodash multer dayjs express
+
 # Pipe (管道)
 
 ## 什么是管道？
@@ -44,8 +43,3 @@ getTest(@Param('id', ParseIntPipe) id: number) {
 2. 代码简洁：避免在业务逻辑中编写重复的数据验证代码
 3. 可复用性：自定义管道可以在整个应用程序中重复使用
 4. 职责分离：将数据转换和验证逻辑与业务逻辑分离
-
-```typescript
-配合管道来实现数据验证
-
-```
