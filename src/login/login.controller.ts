@@ -9,24 +9,22 @@ import {
 } from '@nestjs/common';
 import { Request } from 'express';
 import { LoginService } from './login.service';
-import { LoginDto } from './login.dto';
 import { LoginPipe } from './login.pipe';
-import type { User } from '@prisma/client';
+import { LoginDto } from './login.dto';
 
 @Controller('login')
 export class LoginController {
   constructor(private readonly loginService: LoginService) {}
 
   @Get('svg')
-  async CreactSvg(@Req() req: Request) {
-    const svgData = await this.loginService.creactSvg(req);
-    return svgData;
+  async creactSvg(@Req() req: Request) {
+    return this.loginService.creactSvg(req);
   }
 
   @Post('creactUser')
   @UsePipes(LoginPipe)
   async creactUser(@Body() body: LoginDto, @Req() req: Request) {
-    return this.loginService.creactUser(body, req);
+    return await this.loginService.creactUser(body, req);
   }
 
   @Post('userLogin')

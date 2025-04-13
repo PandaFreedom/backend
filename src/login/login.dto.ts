@@ -1,18 +1,29 @@
-import { IsEmail, IsNotEmpty, Length, Validate } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  Length,
+  Validate,
+  IsOptional,
+} from 'class-validator';
 import { IsConfirmedPassword } from './rules/is-confirmed_password.rule';
 import { IsLongerThan } from './rules/is-not-exists.rule';
 export class LoginDto {
   @IsNotEmpty()
-  @IsLongerThan('username', { message: 'your name is of repeat' }) // 自定义验证器
+  @IsLongerThan('name', { message: 'Username already exists' }) // 修改为name
   username: string;
   @IsEmail()
-  email: string;
-  @Length(8, 16, { message: '密码长度必须在8到16个字符之间' })
+  @IsOptional() // 添加此装饰器使email变为可选
+  email?: string;
+  @Length(8, 16, {
+    message: 'password length must be between 8 and 16 characters',
+  })
   @IsNotEmpty()
   password: string;
   @IsNotEmpty()
   @Validate(IsConfirmedPassword)
   confirmPassword: string;
+  @IsNotEmpty()
+  svgText: string;
 }
 // my diy of is confirmed password
 // import {

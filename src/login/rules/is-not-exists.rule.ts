@@ -21,10 +21,9 @@ export function IsLongerThan(
           const prisma = new PrismaService();
           const user = await prisma.user.findFirst({
             where: {
-              [propertyName]: args.value,
+              [property]: args.value,
             },
           });
-          console.log('user::: ', user);
           return !user;
         },
       },
