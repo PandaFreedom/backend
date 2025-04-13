@@ -1,4 +1,4 @@
-import { Injectable, Param, ParseIntPipe } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import * as svgCaptcha from 'svg-captcha';
 import { Request } from 'express';
 import { PrismaService } from 'src/db';
