@@ -1,11 +1,60 @@
-# 关于使用包 可以直接去 npmjs.or
+# NestJS 认证系统实现文档
+
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
 
-# Pipe (管道)
+## 目录
+- [NestJS 认证系统实现文档](#nestjs-认证系统实现文档)
+  - [目录](#目录)
+  - [项目概述](#项目概述)
+  - [技术栈](#技术栈)
+  - [核心组件](#核心组件)
+    - [管道 (Pipe)](#管道-pipe)
+      - [什么是管道？](#什么是管道)
+      - [常用的内置管道](#常用的内置管道)
+      - [使用示例](#使用示例)
+      - [为什么需要管道？](#为什么需要管道)
+      - [自定义登录管道实现](#自定义登录管道实现)
+      - [使用方式](#使用方式)
+    - [JWT认证](#jwt认证)
+      - [JWT 的主要用途](#jwt-的主要用途)
+      - [配置JWT模块](#配置jwt模块)
+      - [生成JWT令牌](#生成jwt令牌)
+      - [前端存储和使用JWT令牌](#前端存储和使用jwt令牌)
+    - [异常过滤器 (Exception Filter)](#异常过滤器-exception-filter)
+      - [实现](#实现)
+      - [注册全局异常过滤器](#注册全局异常过滤器)
+    - [验证码实现](#验证码实现)
+      - [验证码生成](#验证码生成)
+      - [验证码校验](#验证码校验)
+  - [实现流程](#实现流程)
+    - [用户注册流程](#用户注册流程)
+    - [用户登录流程](#用户登录流程)
+  - [数据传输对象 (DTO)](#数据传输对象-dto)
+    - [注册DTO](#注册dto)
+    - [登录DTO](#登录dto)
+  - [前后端交互](#前后端交互)
+    - [前端发送请求](#前端发送请求)
+    - [后端响应格式](#后端响应格式)
+  - [最佳实践](#最佳实践)
 
-## 什么是管道？
+## 项目概述
+
+本项目实现了一个完整的用户认证系统，包括用户注册、登录、验证码生成和JWT令牌管理。系统使用NestJS框架作为后端，React（Next.js）作为前端，实现了安全可靠的用户身份验证。
+
+## 技术栈
+
+- **后端**：NestJS、Prisma ORM、JWT、argon2（密码加密）
+- **前端**：React、Next.js、Ant Design、React Query
+- **数据库**：PostgreSQL
+- **其他**：svg-captcha（验证码生成）
+
+## 核心组件
+
+### 管道 (Pipe)
+
+#### 什么是管道？
 
 管道（Pipe）是 NestJS 中的一个重要概念，它主要用于：
 
@@ -17,7 +66,7 @@
    - 验证输入数据是否符合业务规则
    - 如果数据无效，则抛出异常
 
-## 常用的内置管道
+#### 常用的内置管道
 
 NestJS 提供了多个开箱即用的管道：
 
@@ -28,7 +77,7 @@ NestJS 提供了多个开箱即用的管道：
 - ParseUUIDPipe：验证是否为有效的 UUID
 - ValidationPipe：基于类验证器的数据验证
 
-## 使用示例
+#### 使用示例
 
 ```typescript
 @Get(':id')
@@ -38,9 +87,404 @@ getTest(@Param('id', ParseIntPipe) id: number) {
 }
 ```
 
-## 为什么需要管道？
+#### 为什么需要管道？
 
 1. 安全性：通过管道可以确保接收到的数据符合预期格式，防止恶意输入
 2. 代码简洁：避免在业务逻辑中编写重复的数据验证代码
 3. 可复用性：自定义管道可以在整个应用程序中重复使用
 4. 职责分离：将数据转换和验证逻辑与业务逻辑分离
+
+#### 自定义登录管道实现
+
+```typescript
+// login.pipe.ts
+@Injectable()
+export class LoginPipe implements PipeTransform {
+  async transform(value: any, metadata: ArgumentMetadata) {
+    // 将输入值转换为指定的类实例
+    const object = plainToInstance(metadata.metatype, value);
+    // 验证转换后的对象
+    const errors = await validate(object);
+
+    if (errors.length > 0) {
+      const errorMessages = errors.map((error) => {
+        const constraints = error.constraints
+          ? Object.values(error.constraints)
+          : [];
+        return {
+          property: error.property,
+          messages: constraints,
+        };
+      });
+      throw new BadRequestException(errorMessages);
+    }
+    // 返回验证通过的对象
+    return object;
+  }
+}
+```
+
+#### 使用方式
+
+在控制器中使用管道验证输入数据：
+
+```typescript
+@Post('creactUser')
+@UsePipes(LoginPipe)
+async creactUser(@Body() body: LoginDto, @Req() req: Request) {
+  return await this.loginService.creactUser(body, req);
+}
+```
+
+或在全局注册管道：
+
+```typescript
+// main.ts
+app.useGlobalPipes(new ValidationPipe());
+```
+
+### JWT认证
+
+JWT（JSON Web Token）是一种用于在网络应用中实现认证和授权的标准方法。它由三部分组成：头部（header），负载（payload）和签名（signature）。
+
+1. 头部（Header）：包含了 JWT 的类型和使用的加密算法。
+2. 负载（Payload）：包含了用户的身份信息和其他元数据。
+3. 签名（Signature）：用于验证 JWT 的完整性和真实性。
+
+#### JWT 的主要用途
+
+- 认证：在用户登录后，服务器会生成一个 JWT 并将其返回给客户端，客户端可以在后续的请求中携带该 JWT 来验证用户的身份。
+- 授权：服务器可以使用 JWT 中的信息来判断用户是否有权限访问特定的资源。
+
+#### 配置JWT模块
+
+```typescript
+// login.module.ts
+@Module({
+  imports: [
+    // 异步注册 JWT 模块
+    JwtModule.registerAsync({
+      inject: [ConfigService], // 注入 ConfigService 以获取配置
+      global: true, // 将 JWT 模块设置为全局模块
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get('TOKEN_SECRET'), // 从配置中获取令牌密钥
+        signOptions: { expiresIn: '1h' }, // 设置令牌过期时间为 1 小时
+      }),
+    }),
+  ],
+  providers: [LoginService, PrismaService, LoginPipe], // 提供服务和管道
+})
+export class LoginModule {}
+```
+
+#### 生成JWT令牌
+
+```typescript
+// login.service.ts
+async generateToken({ username, id }: User) {
+  const token = await this.jwtService.signAsync({ username, id });
+  return token;
+}
+```
+
+#### 前端存储和使用JWT令牌
+
+```javascript
+// 存储令牌
+localStorage.setItem('authToken', data.token);
+
+// 使用令牌进行API请求
+fetch('http://localhost:3001/api/protected-resource', {
+  headers: {
+    'Authorization': `Bearer ${localStorage.getItem('authToken')}`
+  }
+})
+```
+
+### 异常过滤器 (Exception Filter)
+
+异常过滤器用于处理应用程序中抛出的异常，提供统一的错误响应格式。
+
+#### 实现
+
+```typescript
+// filter-test.filter.ts
+@Catch()
+export class FilterTestFilter<T> implements ExceptionFilter {
+  catch(exception: T, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse();
+    const request = ctx.getRequest();
+
+    if (exception instanceof BadRequestException) {
+      const error = exception.getResponse();
+      const message = Object.values(error);
+
+      response.status(400).json({
+        message: message,
+        statusCode: 400,
+        timestamp: new Date().toISOString(),
+        path: request.url,
+      });
+      return;
+    }
+
+    // 处理其他类型的异常
+    response.status(500).json({
+      statusCode: 500,
+      timestamp: new Date().toISOString(),
+      path: request.url,
+      message: '服务器内部错误',
+    });
+  }
+}
+```
+
+#### 注册全局异常过滤器
+
+```typescript
+// main.ts
+app.useGlobalFilters(new FilterTestFilter());
+```
+
+### 验证码实现
+
+验证码用于防止自动化脚本进行注册，提高系统安全性。
+
+#### 验证码生成
+
+```typescript
+// login.service.ts
+async creactSvg(req: Request) {
+  // 创建验证码
+  const svg = svgCaptcha.create({
+    size: 4,             // 验证码长度
+    fontSize: 50,        // 字体大小
+    width: 120,          // 宽度
+    height: 70,          // 高度
+    ignoreChars: '0oO1ilI', // 排除容易混淆的字符
+    color: true,         // 启用彩色
+    background: '#cc9966', // 背景色
+  });
+
+  // 存储验证码到会话
+  req.session['svg'] = svg.text;
+
+  // 保存会话
+  await new Promise<void>((resolve) => {
+    req.session.save(() => {
+      console.log('Session 已保存');
+      resolve();
+    });
+  });
+
+  return svg.data; // 返回SVG数据
+}
+```
+
+#### 验证码校验
+
+```typescript
+// login.service.ts
+// 在注册流程中验证验证码
+if (body.svgText.toLowerCase() === req.session['svg'].toLowerCase()) {
+  // 验证码正确，继续注册流程
+} else {
+  // 验证码错误
+  return { success: false, message: '验证码错误', code: 400 };
+}
+```
+
+## 实现流程
+
+### 用户注册流程
+
+1. **前端准备**：
+   - 用户填写注册表单（用户名、密码、确认密码）
+   - 请求并显示验证码
+   - 用户填写验证码
+
+2. **表单提交**：
+   - 前端验证表单数据
+   - 发送POST请求到 `/auth/creactUser` 端点
+   - 包含用户名、密码、确认密码和验证码
+
+3. **后端处理**：
+   - 使用管道验证表单数据
+   - 验证验证码是否正确
+   - 使用argon2加密密码
+   - 创建用户记录
+   - 生成JWT令牌
+   - 返回成功响应
+
+4. **前端后续处理**：
+   - 保存JWT令牌到localStorage
+   - 显示成功消息
+   - 跳转到仪表板页面
+
+### 用户登录流程
+
+1. **前端准备**：
+   - 用户填写登录表单（用户名、密码）
+
+2. **表单提交**：
+   - 前端验证表单数据
+   - 发送POST请求到 `/auth/login` 端点
+
+3. **后端处理**：
+   - 根据用户名查找用户
+   - 验证用户是否存在
+   - 验证密码是否正确
+   - 生成JWT令牌
+   - 返回成功响应
+
+4. **前端后续处理**：
+   - 保存JWT令牌到localStorage
+   - 显示成功消息
+   - 跳转到仪表板页面
+
+## 数据传输对象 (DTO)
+
+DTO用于定义API接口的数据结构，包括验证规则。
+
+### 注册DTO
+
+```typescript
+// login.dto.ts
+export class LoginDto {
+  @IsNotEmpty()
+  @IsLongerThan('username', { message: 'username is of repeat' })
+  username: string;
+
+  @IsEmail()
+  email: string;
+
+  @Length(8, 16, {
+    message: 'password length must be between 8 and 16 characters',
+  })
+  @IsNotEmpty()
+  password: string;
+
+  @IsNotEmpty()
+  @Validate(IsConfirmedPassword)
+  confirmPassword: string;
+
+  @IsNotEmpty()
+  svgText: string;
+}
+```
+
+### 登录DTO
+
+```typescript
+// loginAuth.dto.ts
+export class LoginAuthDto {
+  @IsString()
+  @IsNotEmpty({ message: '用户名不能为空' })
+  name: string;
+
+  @IsString()
+  @IsNotEmpty({ message: '密码不能为空' })
+  password: string;
+}
+```
+
+## 前后端交互
+
+### 前端发送请求
+
+```javascript
+// 注册请求
+fetch('http://localhost:3001/auth/creactUser', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  credentials: 'include',
+  body: JSON.stringify(values),
+})
+.then((res) => res.json())
+.then((data) => {
+  if (data.success) {
+    // 保存token
+    localStorage.setItem('authToken', data.token);
+    localStorage.setItem('username', data.username);
+    localStorage.setItem('userId', data.id);
+
+    // 跳转页面
+    router.push('/dashboard');
+  }
+});
+
+// 登录请求
+fetch('http://localhost:3001/auth/login', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  credentials: 'include',
+  body: JSON.stringify({
+    name: values.username,
+    password: values.password
+  }),
+})
+.then((res) => res.json())
+.then((data) => {
+  if (data.success) {
+    // 保存token
+    localStorage.setItem('authToken', data.token);
+  }
+});
+```
+
+### 后端响应格式
+
+```json
+// 成功响应
+{
+  "success": true,
+  "message": "操作成功",
+  "code": 200,
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "id": 1,
+  "username": "testuser"
+}
+
+// 错误响应
+{
+  "success": false,
+  "message": "验证码错误",
+  "code": 400
+}
+```
+
+## 最佳实践
+
+1. **密码安全**：
+   - 使用argon2进行密码加密，比bcrypt更安全
+   - 永远不要在数据库中存储明文密码
+   - JWT令牌中不要包含敏感信息（如密码）
+
+2. **错误处理**：
+   - 使用异常过滤器统一处理错误
+   - 返回友好的错误信息，但不暴露系统细节
+   - 在关键位置添加try-catch块
+
+3. **代码组织**：
+   - 将业务逻辑放在服务层
+   - 控制器只负责处理HTTP请求和响应
+   - 使用DTO定义和验证数据结构
+
+4. **安全考虑**：
+   - 使用HTTPS传输敏感数据
+   - 设置合理的令牌过期时间
+   - 考虑使用刷新令牌机制
+   - 实现CSRF保护
+
+5. **前端处理**：
+   - 存储令牌时考虑安全性（localStorage vs HttpOnly Cookie）
+   - 实现令牌过期处理逻辑
+   - 添加请求失败重试机制
+
+通过以上实践，可以构建一个安全、可靠的用户认证系统，为应用程序提供良好的用户体验和安全保障。
+

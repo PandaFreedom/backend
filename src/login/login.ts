@@ -7,25 +7,30 @@ import {
 } from 'class-validator';
 import { IsConfirmedPassword } from './rules/is-confirmed_password.rule';
 import { IsLongerThan } from './rules/is-not-exists.rule';
+
 export class LoginDto {
   @IsNotEmpty()
-  @IsLongerThan('name', { message: 'Username already exists' }) // 修改为name
+  @IsLongerThan('name', { message: '用户名已存在' }) // 修改为name
   username: string;
+
   @IsEmail()
   @IsOptional() // 添加此装饰器使email变为可选
   email?: string;
+
   @Length(8, 16, {
-    message: 'password length must be between 8 and 16 characters',
+    message: '密码长度必须在8到16个字符之间',
   })
   @IsNotEmpty()
   password: string;
+
   @IsNotEmpty()
   @Validate(IsConfirmedPassword)
   confirmPassword: string;
+
   @IsNotEmpty()
   svgText: string;
 }
-// my diy of is confirmed password
+// 自定义确认密码验证器
 // import {
 //   ValidationArguments,
 //   ValidatorConstraint,
@@ -46,6 +51,6 @@ export class LoginDto {
 // 默认错误消息
 //   defaultMessage(validationArguments?: ValidationArguments): string {
 //     console.log('validationArguments', validationArguments);
-//     return '密码不一致 比对失败';
+//     return '密码不一致，比对失败';
 //   }
 // }

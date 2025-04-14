@@ -8,7 +8,7 @@ import { UploadModule } from './upload/upload.module';
 import { LoginModule } from './login/login.module';
 import { PrismaService } from './db';
 import { PipeModule } from './pipe/pipe.module';
-
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
   imports: [
@@ -18,6 +18,10 @@ import { PipeModule } from './pipe/pipe.module';
     UploadModule,
     LoginModule,
     PipeModule,
+    LoginModule,
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
   ],
   controllers: [AppController],
   providers: [AppService, PrismaService],
