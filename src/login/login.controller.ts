@@ -6,17 +6,17 @@ import {
   Header,
   Post,
   Req,
-  Res,
   UsePipes,
   Query,
-  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { LoginDto } from './login';
 import { LoginPipe } from './login.pipe';
 import { LoginService } from './login.service';
 import { PrismaService } from '../db';
-import { AuthGuard } from '@nestjs/passport';
+// import { AuthGuard } from '@nestjs/passport';
+import { Auth } from './decorator/auth.decorator';
+import { User } from './decorator/user.decorator';
 
 /**
  * 认证控制器
@@ -103,9 +103,10 @@ export class LoginController {
     }
   }
   @Get('all')
-  @UseGuards(AuthGuard('jwt'))
-  async getAll(@Req() req: Request) {
-    console.log('req', req);
+  // @UseGuards(AuthGuard('jwt'))
+  @Auth()
+  async getAll(@User() user: any) {
+    console.log('user', user);
     return this.prisma.user.findMany();
   }
 }

@@ -1,12 +1,11 @@
 import { Module } from '@nestjs/common';
-import { LoginService } from './login.service';
-import { PrismaService } from 'src/db';
-import { LoginPipe } from './login.pipe';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
+import { PrismaService } from 'src/db';
 import { LoginController } from './login.controller';
+import { LoginPipe } from './login.pipe';
+import { LoginService } from './login.service';
 import { JwtStrategy } from './jstStrategy';
-
 // 定义 LoginModule 模块
 @Module({
   imports: [
@@ -16,7 +15,7 @@ import { JwtStrategy } from './jstStrategy';
       global: true, // 将 JWT 模块设置为全局模块
       useFactory: (configService: ConfigService) => ({
         secret: configService.get('TOKEN_SECRET'), // 从配置中获取令牌密钥
-        signOptions: { expiresIn: '1d' }, // 设置令牌过期时间为 1 天
+        signOptions: { expiresIn: '60s' }, // 设置令牌过期时间为 1 分钟
       }),
     }),
   ],
