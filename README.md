@@ -38,6 +38,15 @@
     - [前端发送请求](#前端发送请求)
     - [后端响应格式](#后端响应格式)
   - [最佳实践](#最佳实践)
+  - [常见问题与排查：JWT认证401错误](#常见问题与排查jwt认证401错误)
+    - [现象描述](#现象描述)
+    - [问题分析](#问题分析)
+    - [解决方案](#解决方案)
+    - [经验教训](#经验教训)
+  - [前端路由守卫](#前端路由守卫)
+    - [客户端路由保护](#客户端路由保护)
+    - [认证状态管理](#认证状态管理)
+    - [注销功能](#注销功能)
 
 ## 项目概述
 
@@ -200,7 +209,7 @@ fetch('http://localhost:3001/api/protected-resource', {
   }
 })
 ```
-
+![alt text](image.png)
 ### 异常过滤器 (Exception Filter)
 
 异常过滤器用于处理应用程序中抛出的异常，提供统一的错误响应格式。
@@ -487,4 +496,193 @@ fetch('http://localhost:3001/auth/login', {
    - 添加请求失败重试机制
 
 通过以上实践，可以构建一个安全、可靠的用户认证系统，为应用程序提供良好的用户体验和安全保障。
+
+## 常见问题与排查：JWT认证401错误
+
+### 现象描述
+
+- 登录接口能正常返回token，格式无误。
+- 用Apifox等工具访问受保护接口（如 `/auth/all`），即使带上了token，依然返回401 Unauthorized。
+- 后端日志有如下报错：
+
+  ```
+  Invalid `this.prisma.user.findUnique()` invocation...
+  Argument `where` of type UserWhereUniqueInput needs at least one of `id` or `name` arguments.
+  ...
+  async validate({ sub: id }) {
+    return this.prisma.user.findUnique({
+      where: { id },
+    });
+  }
+  ```
+
+### 问题分析
+
+- 生成JWT token时，payload写的是 `{ username, id }`，**没有把id放到sub字段**。
+- JwtStrategy（jstStrategy.ts）里，`validate({ sub: id })` 期望token里有`sub`字段。
+- 结果：`id` 变成了 `undefined`，Prisma查数据库时报错，导致认证失败，返回401。
+
+### 解决方案
+
+- **推荐做法**：生成token时，payload写成 `{ username, sub: id }`，这样JwtStrategy能正确解构出id。
+  ```js
+  // 正确写法
+  const token = await this.jwtService.signAsync({ username, sub: id });
+  ```
+- 或者，直接在validate方法里用`payload.id`，兼容你原来的token结构。
+  ```js
+  async validate(payload: any) {
+    return this.prisma.user.findUnique({
+      where: { id: payload.id },
+    });
+  }
+  ```
+
+### 经验教训
+
+- JWT认证时，token的payload结构要和后端解构方式严格一致。
+- 认证失败时，优先看后端日志，尤其是validate方法和数据库查询的报错。
+- Authorization头必须严格为`Bearer <token>`格式。
+
+## 前端路由守卫
+
+为了确保只有已认证的用户才能访问受保护的页面，我们实现了前端路由守卫机制。
+
+### 客户端路由保护
+
+我们使用React组件包装需要保护的页面，实现了客户端路由保护：
+
+```tsx
+// src/app/components/ProtectedRoute.tsx
+"use client";
+
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function ProtectedRoute({ children }) {
+  const router = useRouter();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    // 检查用户是否已认证
+    const checkAuth = () => {
+      const token = localStorage.getItem('authToken');
+
+      if (!token) {
+        // 未找到token，重定向到登录页
+        router.push('/login');
+      } else {
+        // 找到token，设置认证状态
+        setIsAuthenticated(true);
+      }
+
+      setIsLoading(false);
+    };
+
+    checkAuth();
+  }, [router]);
+
+  // 显示加载状态或已认证的内容
+  if (isLoading) return <div>加载中...</div>;
+  if (isAuthenticated) return <>{children}</>;
+  return null;
+}
+```
+
+使用方式：
+
+```tsx
+// 在需要保护的页面中使用
+function DashboardPage() {
+  return (
+    <ProtectedRoute>
+      <div>仪表板内容</div>
+    </ProtectedRoute>
+  );
+}
+```
+
+### 认证状态管理
+
+为了方便管理认证状态，我们创建了认证工具函数：
+
+```ts
+// src/app/utils/auth.ts
+
+// 保存用户认证信息
+export const saveAuth = (token, username, userId) => {
+  localStorage.setItem('authToken', token);
+  localStorage.setItem('username', username);
+  localStorage.setItem('userId', userId);
+};
+
+// 检查用户是否已认证
+export const isAuthenticated = () => {
+  if (typeof window === 'undefined') return false;
+  const token = localStorage.getItem('authToken');
+  return !!token;
+};
+
+// 获取用户信息
+export const getUserInfo = () => {
+  if (typeof window === 'undefined') return { username: '', userId: '' };
+  return {
+    username: localStorage.getItem('username') || '',
+    userId: localStorage.getItem('userId') || '',
+  };
+};
+
+// 清除用户认证信息
+export const clearAuth = () => {
+  localStorage.removeItem('authToken');
+  localStorage.removeItem('username');
+  localStorage.removeItem('userId');
+};
+```
+
+### 注销功能
+
+我们实现了注销功能，让用户可以安全地退出系统：
+
+```tsx
+// src/app/components/LogoutButton.tsx
+"use client";
+
+import { Button } from 'antd';
+import { useRouter } from 'next/navigation';
+import { clearAuth } from '../utils/auth';
+
+export default function LogoutButton({ className }) {
+  const router = useRouter();
+
+  const handleLogout = () => {
+    // 清除认证信息
+    clearAuth();
+
+    // 跳转到登录页
+    router.push('/login');
+  };
+
+  return (
+    <Button
+      danger
+      type="primary"
+      onClick={handleLogout}
+      className={className}
+    >
+      退出登录
+    </Button>
+  );
+}
+```
+
+通过以上实现，我们建立了一个完整的前端认证体系，包括：
+
+1. 路由保护：确保只有已认证的用户才能访问受保护页面
+2. 认证状态管理：集中管理用户认证信息和状态
+3. 注销功能：安全地退出系统
+4. 用户体验：加载状态显示和友好的错误提示
+
+这些功能与后端的JWT认证系统无缝集成，提供了完整的用户认证解决方案。
 
