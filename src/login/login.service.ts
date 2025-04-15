@@ -36,6 +36,52 @@ export class LoginService {
   ) {}
 
   /**
+   * 验证JWT令牌
+   * @param token JWT令牌
+   * @returns 解码后的用户信息
+   * @throws UnauthorizedException 如果令牌无效或已过期
+   */
+  async verifyToken(token: string) {
+    try {
+      // 验证令牌并解码
+      const decoded = await this.jwtService.verifyAsync(token);
+
+      // 检查解码后的数据中是否包含用户ID
+      if (!decoded || !decoded.id) {
+        throw new UnauthorizedException('无效令牌格式');
+      }
+
+      // 从数据库中查找用户，确认用户存在
+      const user = await this.prisma.user.findUnique({
+        where: { id: decoded.id },
+        select: { id: true, name: true }, // 只选择安全字段，不包括密码
+      });
+
+      // 如果用户不存在，则令牌无效
+      if (!user) {
+        throw new UnauthorizedException('令牌对应的用户不存在');
+      }
+
+      // 返回用户信息（不包含敏感数据）
+      return {
+        id: user.id,
+        username: user.name,
+      };
+    } catch (error) {
+      console.error('令牌验证失败:', error.message);
+
+      // 根据错误类型返回合适的异常
+      if (error.name === 'TokenExpiredError') {
+        throw new UnauthorizedException('令牌已过期');
+      } else if (error.name === 'JsonWebTokenError') {
+        throw new UnauthorizedException('无效的令牌');
+      } else {
+        throw new UnauthorizedException('令牌验证失败');
+      }
+    }
+  }
+
+  /**
    * 创建SVG验证码
    * @param req Express请求对象，用于存储验证码到会话
    * @returns 返回SVG验证码数据
@@ -156,6 +202,7 @@ export class LoginService {
     if (!(await verify(user.password, body.password))) {
       throw new UnauthorizedException('密码错误');
     } else {
+      delete user.copyPassword;
       console.log('用户验证成功:', user);
     }
 
@@ -170,7 +217,7 @@ export class LoginService {
    * @returns 生成的JWT令牌
    */
   async generateToken({ username, id }: User) {
-    const token = await this.jwtService.signAsync({ username, id });
+    const token = await this.jwtService.signAsync({ username, sub: id });
     console.log('生成的token:', token);
     return token;
   }

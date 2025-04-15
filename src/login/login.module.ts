@@ -5,6 +5,7 @@ import { LoginPipe } from './login.pipe';
 import { ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { LoginController } from './login.controller';
+import { JwtStrategy } from './jstStrategy';
 
 // 定义 LoginModule 模块
 @Module({
@@ -20,6 +21,6 @@ import { LoginController } from './login.controller';
     }),
   ],
   controllers: [LoginController],
-  providers: [LoginService, PrismaService, LoginPipe], // 提供服务和管道
+  providers: [LoginService, PrismaService, LoginPipe, JwtStrategy], // 提供服务和管道
 })
 export class LoginModule {} // 导出 LoginModule 类

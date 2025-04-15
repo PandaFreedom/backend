@@ -9,12 +9,14 @@ import {
   Res,
   UsePipes,
   Query,
+  UseGuards,
 } from '@nestjs/common';
 import { Request } from 'express';
 import { LoginDto } from './login';
 import { LoginPipe } from './login.pipe';
 import { LoginService } from './login.service';
-import type { LoginAuthDto } from './loginAuth.dto';
+import { PrismaService } from '../db';
+import { AuthGuard } from '@nestjs/passport';
 
 /**
  * 认证控制器
@@ -26,7 +28,10 @@ export class LoginController {
    * 构造函数，注入登录服务
    * @param loginService 登录服务实例
    */
-  constructor(private readonly loginService: LoginService) {}
+  constructor(
+    private readonly loginService: LoginService,
+    private readonly prisma: PrismaService,
+  ) {}
 
   /**
    * 生成 SVG 验证码
@@ -96,5 +101,11 @@ export class LoginController {
       console.error('生成token时出错:', error);
       return { success: false, error: error.message };
     }
+  }
+  @Get('all')
+  @UseGuards(AuthGuard('jwt'))
+  async getAll(@Req() req: Request) {
+    console.log('req', req);
+    return this.prisma.user.findMany();
   }
 }
