@@ -47,6 +47,17 @@
     - [客户端路由保护](#客户端路由保护)
     - [认证状态管理](#认证状态管理)
     - [注销功能](#注销功能)
+  - [文件上传](#文件上传)
+    - [1. 模块配置](#1-模块配置)
+    - [2. 自定义装饰器](#2-自定义装饰器)
+    - [3. 控制器用法](#3-控制器用法)
+    - [4. 接口说明](#4-接口说明)
+    - [5. 返回值说明](#5-返回值说明)
+    - [6. 前端/ApiFox 调用示例](#6-前端apifox-调用示例)
+      - [ApiFox 配置](#apifox-配置)
+      - [fetch 示例](#fetch-示例)
+    - [7. 常见问题](#7-常见问题)
+    - [8. 进阶用法](#8-进阶用法)
 
 ## 项目概述
 
@@ -686,3 +697,178 @@ export default function LogoutButton({ className }) {
 
 这些功能与后端的JWT认证系统无缝集成，提供了完整的用户认证解决方案。
 
+## 文件上传
+
+本项目支持通过 NestJS + Multer 实现图片/文件上传，支持自定义文件类型、大小等限制，并通过自定义装饰器简化上传接口的开发。
+
+### 1. 模块配置
+
+```typescript
+// upload.module.ts
+import { Module } from '@nestjs/common';
+import { UploadService } from './upload.service';
+import { UploadController } from './upload.controller';
+import { MulterModule } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
+
+@Module({
+  imports: [
+    MulterModule.register({
+      storage: diskStorage({
+        // 文件存储路径
+        destination: './uploads',
+        // 文件名格式：原始文件名-当前时间戳.文件扩展名
+        filename: (req, file, callback) => {
+          const fileName = file.originalname.split('.')[0];
+          const fileExtension = file.originalname.split('.').pop();
+          return callback(null, `${fileName}-${Date.now()}.${fileExtension}`);
+        },
+      }),
+    }),
+  ],
+  controllers: [UploadController],
+  providers: [UploadService],
+})
+export class UploadModule {}
+```
+
+---
+
+### 2. 自定义装饰器
+
+为了让上传接口更简洁、易维护，项目封装了 `@Upload()` 装饰器：
+
+```typescript
+// uploda.decorator.ts
+import { applyDecorators, UseInterceptors } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+
+export function Upload(type: 'image' | 'file', options?: any) {
+  return applyDecorators(UseInterceptors(FileInterceptor(type, options)));
+}
+```
+
+---
+
+### 3. 控制器用法
+
+```typescript
+// upload.controller.ts
+import { Controller, Post, UploadedFile, BadRequestException } from '@nestjs/common';
+import { Upload } from './decorator/uploda.decorator';
+
+@Controller('upload')
+export class UploadController {
+  @Post('image')
+  @Upload('image', {
+    limits: {
+      fileSize: 1024 * 1024 * 5, // 5MB
+    },
+    fileFilter(req, file, callback) {
+      if (file.mimetype.includes('image')) {
+        callback(null, true);
+      } else {
+        callback(new BadRequestException('文件类型不支持'), false);
+      }
+    },
+  })
+  uploadImage(@UploadedFile() file: Express.Multer.File) {
+    if (!file.filename) {
+      return {
+        success: true,
+        originalname: file.originalname,
+        mimetype: file.mimetype,
+        size: file.size,
+        buffer: '文件内容已接收',
+      };
+    }
+    return { success: true, filename: file.filename };
+  }
+}
+```
+
+---
+
+### 4. 接口说明
+
+- **接口地址**：`POST /upload/image`
+- **请求类型**：`multipart/form-data`
+- **参数说明**：
+
+| 参数名 | 类型   | 必填 | 说明           |
+| ------ | ------ | ---- | -------------- |
+| image  | 文件   | 是   | 上传的图片文件 |
+
+- **限制**：
+  - 文件大小 ≤ 5MB
+  - 仅支持图片类型（`image/*`）
+
+---
+
+### 5. 返回值说明
+
+- **成功响应**：
+
+```json
+{
+  "success": true,
+  "filename": "yourfile-1713240000000.png"
+}
+```
+
+- **失败响应**：
+
+```json
+{
+  "statusCode": 400,
+  "message": "文件类型不支持",
+  "error": "Bad Request"
+}
+```
+
+---
+
+### 6. 前端/ApiFox 调用示例
+<image src="./自定义装饰器.png">
+
+#### ApiFox 配置
+
+- 请求方式：POST
+- Body 类型：form-data
+- 参数名：`image`，类型选择"文件"，选择本地图片
+
+#### fetch 示例
+
+```javascript
+const formData = new FormData();
+formData.append('image', fileInput.files[0]);
+
+fetch('http://localhost:3001/upload/image', {
+  method: 'POST',
+  body: formData,
+})
+  .then(res => res.json())
+  .then(data => {
+    if (data.success) {
+      alert('上传成功，文件名：' + data.filename);
+    } else {
+      alert('上传失败：' + data.message);
+    }
+  });
+```
+
+---
+
+### 7. 常见问题
+
+- **字段名必须为 `image`**，否则会报 `Unexpected field` 错误。
+- 文件大小超限或类型不符会被拒绝，返回 400 错误。
+- 上传目录 `./uploads` 必须存在且有写入权限。
+
+---
+
+### 8. 进阶用法
+
+如需上传其他类型文件或多个文件，可参考 NestJS 官方文档，或扩展自定义装饰器。
+
+---
