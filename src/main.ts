@@ -6,6 +6,7 @@ import * as cookieParser from 'cookie-parser';
 import { LoginPipe } from './login/login.pipe';
 import { ValidationPipe } from '@nestjs/common';
 import { FilterTestFilter } from './filter-test/filter-test.filter';
+import { Transformlnterceptor } from './upload/Transformlnterceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
@@ -14,6 +15,8 @@ async function bootstrap() {
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe());
   app.useGlobalFilters(new FilterTestFilter());
+  app.useGlobalInterceptors(new Transformlnterceptor());
+
   // CORS配置要在session中间件之前
   app.enableCors({
     origin: ['http://localhost:3000', 'http://localhost:3002'], // 允许的前端地址
