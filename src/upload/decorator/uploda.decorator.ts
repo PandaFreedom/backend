@@ -24,3 +24,14 @@ export function Upload(type: 'image' | 'file', options?: any) {
 //     },
 //   }),
 // )
+export function UploadImage() {
+  return applyDecorators(
+    UseInterceptors(
+      FileInterceptor('image', {
+        limits: {
+          fileSize: 1024 * 1024 * 5, // 5MB
+        },
+      }),
+    ),
+  );
+}

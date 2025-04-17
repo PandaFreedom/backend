@@ -10,7 +10,7 @@ import { Transformlnterceptor } from './upload/Transformlnterceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
-
+  app.useStaticAssets('uploads', { prefix: '/uploads' });
   // 添加cookie解析中间件
   app.use(cookieParser());
   app.useGlobalPipes(new ValidationPipe());
