@@ -10,7 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { Request } from 'express';
-import { LoginDto } from './login';
+import { LoginDto } from './login.dto';
 import { LoginPipe } from './login.pipe';
 import { LoginService } from './login.service';
 import { PrismaService } from '../db';

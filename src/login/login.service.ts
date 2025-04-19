@@ -1,4 +1,4 @@
-import { LoginDto } from './login';
+import { LoginDto } from './login.dto';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { hash, verify } from 'argon2';
