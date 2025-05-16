@@ -3,6 +3,10 @@
 <p align="center">
   <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
 </p>
+ 对应掘金地址:<a href="https://juejin.cn/post/7494546904756715554">掘金文章:<br>
+   <img src="https://lf-web-assets.juejin.cn/obj/juejin-web/xitu_juejin_web/e08da34488b114bd4c665ba2fa520a31.svg" alt="稀土掘金" class="logo-img" data-v-13e20730="">
+ </a>
+
 
 ## 目录
 - [NestJS 认证系统实现文档](#nestjs-认证系统实现文档)
